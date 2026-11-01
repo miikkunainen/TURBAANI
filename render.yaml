@@ -1,0 +1,22 @@
+# Review Render's cost estimate before applying: paid web service + 1 GB persistent disk.
+services:
+  - type: web
+    name: turbaani-purjehdus
+    runtime: node
+    region: frankfurt
+    plan: 0.5c-512mb
+    buildCommand: node build.cjs
+    startCommand: node server.cjs
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: NODE_VERSION
+        value: "24.22.1"
+      - key: NODE_ENV
+        value: production
+      - key: DATA_FILE
+        value: /var/data/purjehdus.sqlite
+    disk:
+      name: purjehdus-data
+      mountPath: /var/data
+      sizeGB: 1
