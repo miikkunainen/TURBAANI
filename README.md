@@ -4,9 +4,9 @@ Purjehdus 3:n 70 minuutin Double Diamond -peli, jossa QR-siirrot on korvattu pal
 
 ## Tila 1.11.2026
 
-Paikallisesti toteutettu ja testattu. 23 automaattista HTTP-/palvelintestiä läpäisty. Pelin pääpolku kokeiltu oikeassa selaimessa erillisillä pelinjohtajan, pelaajan ja luotsin välilehdillä: liittyminen, lähtökirjaukset, aloituksen päivitys, satamaleima, löydöt, Define, luotsin hyväksyntä, kolme ideaa, pisteytys, myrsky, rantautuminen ja tallennetun työn palautuminen sivun uudelleenlatauksessa.
+Paikallisesti toteutettu ja testattu. 29 automaattista HTTP-/palvelin- ja tallennustestiä läpäisty. Pelin pääpolku kokeiltu oikeassa selaimessa erillisillä pelinjohtajan, pelaajan ja luotsin välilehdillä: liittyminen, lähtökirjaukset, aloituksen päivitys, satamaleima, löydöt, Define, luotsin hyväksyntä, kolme ideaa, pisteytys, myrsky, rantautuminen ja tallennetun työn palautuminen sivun uudelleenlatauksessa.
 
-**Julkista palvelinta ei ole tämän toimituksen yhteydessä otettu käyttöön.** GitHub-repositorio on lähdekoodin ja CI-testien paikka. GitHub Pages ei suorita tätä Node-palvelinta. Julkinen peli tarvitsee yhden Node 24- tai Docker-palvelun, HTTPS:n ja pysyvän levytilan. Käyttöliittymä ja API palvellaan samasta osoitteesta; Supabasea tai muuta erillistä tietokantatiliä ei tarvita.
+**Julkista palvelinta ei ole tämän toimituksen yhteydessä otettu käyttöön.** GitHub-repositorio on lähdekoodin ja CI-testien paikka. GitHub Pages ei suorita tätä Node-palvelinta. Valittu maksuton julkaisu käyttää Render Free -palvelinta ja Supabase Free -tietokantaa. Käyttöliittymä ja API palvellaan samasta Renderin HTTPS-osoitteesta. Katso [maksuton käyttöönotto](RENDER_FREE.md). SQLite on edelleen paikallisen kehityksen vaihtoehto.
 
 ## Käynnistä
 
@@ -29,6 +29,8 @@ docker compose up --build -d
 Compose luo pysyvän `purjehdus-data`-volyymin. Pelitietokanta ei ole lähdekoodia eikä sitä pidä commitoida GitHubiin.
 
 ## Julkaisu GitHubista
+
+**Maksuton Render-julkaisu: noudata tiedostoa [RENDER_FREE.md](RENDER_FREE.md). Alla oleva yleisohje koskee erillistä Node/Docker-palvelinta, jolla käytetään paikallista SQLiteä.**
 
 1. Valitse palvelinpaikka, joka suorittaa Node 24:ää tai mukana olevan Dockerfilen.
 2. Liitä tämä GitHub-repositorio ja käyttöön otettava haara palveluun.
@@ -54,7 +56,7 @@ Pelin kesto ja sisältöportit säilyvät alkuperäisinä: 5 / 15 / 12 / 5 / 15 
 
 ## Tallennus, roolit ja yhteys
 
-- Palvelin tallentaa huoneet, pelaajien työt ja vastaanottamista odottavat leimat SQLiteen. Katkon jälkeen leima poistuu jonosta vasta vastaanottokuittauksella, ja nonce estää saman leiman soveltamisen kahdesti.
+- Palvelin tallentaa huoneet, pelaajien työt ja vastaanottamista odottavat leimat valittuun tietokantaan: Render Free -julkaisussa Supabaseen, paikallisesti SQLiteen. Katkon jälkeen leima poistuu jonosta vasta vastaanottokuittauksella, ja nonce estää saman leiman soveltamisen kahdesti.
 - Pelinjohtaja voi muuttaa yhteistä peliä. Opettaja voi tarkastella lasteja ja antaa leimoja. Pelaaja saa oman työtilansa sekä muiden veneiden nimet, mutta ei toisten kokonaisia töitä tai opettaja-avainta. Tietoja jaetaan pelaajien kesken vain liittoutumistoiminnolla.
 - Enintään 15 pelaajaistuntoa ja neljä opettajaistuntoa, yksi pelinjohtaja. Nimimerkin uudelleen syöttäminen luo uuden veneen. Jatkamiseen käytetään saman selaimen **Jatka aiempaa peliä** -linkkiä tai jo avointa pelivälilehteä.
 - Tämä toteutus ei sisällä yksittäisen pelaajan istunnon vapautusta, käyttäjätilien salasanapalautusta tai koko pelin JSON-varmuuskopion tuontia uuteen palvelimeen. Palvelinlevyn normaali varmistaminen ja palauttaminen on ylläpitäjän tehtävä. Paikallisen QR-pelitilan tuonti on verkkoversiossa poistettu, jotta se ei ylikirjoita yhteistä huonetta.
@@ -63,7 +65,10 @@ Pelin kesto ja sisältöportit säilyvät alkuperäisinä: 5 / 15 / 12 / 5 / 15 
 
 ## Tiedostot
 
-- `server.cjs`: HTTP-API, käyttöoikeudet, leimajonot ja SQLite.
+- `server.cjs`: HTTP-API, käyttöoikeudet ja leimajonot.
+- `storage.cjs`: Supabase-REST-tallennus tai paikallinen SQLite.
+- `supabase-schema.sql`: palvelimen käyttämän taulun rajattu käyttöoikeus.
+- `render.yaml`, `RENDER_FREE.md`: maksuttoman julkaisun asetukset ja ohjeet.
 - `public/game.html`: toimitettu Purjehdus 3, johon build lisää verkkosovittimen.
 - `public/net.js`: alkuperäisen pelin ja verkkopalvelimen yhdistävä kerros.
 - `public/index.html`, `public/lobby.js`: liittyminen ja uuden pelin luonti.
