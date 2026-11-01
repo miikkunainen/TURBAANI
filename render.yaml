@@ -1,0 +1,22 @@
+# Free web service. Persistent game data lives in a separate Supabase Free project.
+services:
+  - type: web
+    name: turbaani-purjehdus
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: node build.cjs
+    startCommand: node server.cjs
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: NODE_VERSION
+        value: "24.22.1"
+      - key: NODE_ENV
+        value: production
+      - key: REQUIRE_REMOTE_STORAGE
+        value: "1"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
