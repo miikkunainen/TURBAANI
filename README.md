@@ -4,9 +4,15 @@ Purjehdus 3:n 70 minuutin Double Diamond -peli, jossa QR-siirrot on korvattu pal
 
 ## Tila 1.11.2026
 
-Paikallisesti toteutettu ja testattu. 29 automaattista HTTP-/palvelin- ja tallennustestiä läpäisty. Pelin pääpolku kokeiltu oikeassa selaimessa erillisillä pelinjohtajan, pelaajan ja luotsin välilehdillä: liittyminen, lähtökirjaukset, aloituksen päivitys, satamaleima, löydöt, Define, luotsin hyväksyntä, kolme ideaa, pisteytys, myrsky, rantautuminen ja tallennetun työn palautuminen sivun uudelleenlatauksessa.
+Paikallisesti toteutettu ja testattu. 43 automaattista palvelin-, tallennus- ja siirtotestiä läpäisty. Pelin pääpolku kokeiltu oikeassa selaimessa erillisillä pelinjohtajan, pelaajan ja luotsin välilehdillä: liittyminen, lähtökirjaukset, aloituksen päivitys, satamaleima, löydöt, Define, luotsin hyväksyntä, kolme ideaa, pisteytys, myrsky, rantautuminen ja tallennetun työn palautuminen sivun uudelleenlatauksessa.
 
 **Julkista palvelinta ei ole tämän toimituksen yhteydessä otettu käyttöön.** GitHub-repositorio on lähdekoodin ja CI-testien paikka. GitHub Pages ei suorita tätä Node-palvelinta. Valittu maksuton julkaisu käyttää Render Free -palvelinta ja Supabase Free -tietokantaa. Käyttöliittymä ja API palvellaan samasta Renderin HTTPS-osoitteesta. Katso [maksuton käyttöönotto](RENDER_FREE.md). SQLite on edelleen paikallisen kehityksen vaihtoehto.
+
+## Tietosuoja ja siirto Moodleen
+
+Katso [PRIVACY.md](PRIVACY.md). Oletustunniste ei sisällä oikeita nimikirjaimia. Opiskelijan JSON-vienti on minimoitu ja tuonti/vienti toimii mukana toimitetun itsenäisen `public/moodle.html`-version kanssa. Tavallinen HTML ei lue Moodle-henkilöllisyyttä tai kirjoita arviointeja. Vapaa teksti voi silti sisältää henkilötietoja; pseudonymisointi ei yksin osoita GDPR-vaatimustenmukaisuutta.
+
+Uusien pelien säilytysaika on 7 vrk. Pelinjohtaja voi poistaa koko pelin, ja osallistuja voi unohtaa paikallisen istunnon. Poisto ei koske ladattuja tiedostoja tai Moodle-palautuksia.
 
 ## Käynnistä
 
@@ -44,7 +50,7 @@ Compose luo pysyvän `purjehdus-data`-volyymin. Pelitietokanta ei ole lähdekood
 ## Pelinjohtajan pikaohje
 
 1. Avaa yhteinen osoite ja täytä oikean puolen **Pelinjohtajan lähtösatama**. **Luo uusi peli**.
-2. Näytä opiskelijoille sivuosoite ja **pelitunnus**. Opiskelijat avaavat sivun, kirjoittavat nimimerkin tai venekunnan nimen, valitsevat pelaajaroolin ja liittyvät. Jokaisella venekunnalla on oma lokikirja; venekunnan yhteistä tekstiä kirjoitetaan yhdeltä laitteelta.
+2. Näytä opiskelijoille sivuosoite ja **pelitunnus**. Opiskelijat avaavat sivun, käyttävät satunnaista työtunnusta (ei oikeaa nimeä), valitsevat pelaajaroolin ja liittyvät. Jokaisella työtunnuksella on oma lokikirja; venekunnan yhteistä tekstiä kirjoitetaan yhdeltä laitteelta.
 3. Avaa **Opettajien liittymistunnus** ja näytä se vain opettajille projektorin kuva pimennettynä. Opettajat liittyvät samalla pelitunnuksella ja erillisellä opettajatunnuksella luotsiksi tai satamaksi.
 4. Kun osallistujat näkyvät, paina **Aloita peli**. Aloitus ja myöhemmät muutokset päivittyvät laitteille noin kahden sekunnin välein, kun yhteys on toimiva. Kukaan ei kuvaa koodia.
 5. Klikkaa veneen nimeä avataksesi tuoreen lastin. Opettaja antaa **Sataman leiman** tai **Luotsi: kapeikko auki**. Pelaaja saa sen automaattisesti. Tarkastelukortti ei piirtyile uudelleen kesken opettajan kirjoittamisen; **Päivitä lasti** hakee uuden tilanteen tarvittaessa.

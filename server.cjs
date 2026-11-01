@@ -2,17 +2,20 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const {randomBytes,createHash,webcrypto}=require('node:crypto');
 const {createStore}=require('./storage.cjs');
+const {validId}=require('./public/transfer.js');
 const hash=s=>createHash('sha256').update(String(s)).digest('hex');
 const secret=()=>randomBytes(24).toString('base64url');
 function fail(code,message){const e=new Error(message);e.status=code;throw e;}
 function text(x,max=200){if(typeof x!=='string'||!x.trim()||x.length>max)fail(400,'Virheellinen teksti');return x.trim();}
+function alias(x){if(!validId(x))fail(400,'Käytä satunnaista työtunnusta, älä nimeä, sähköpostia tai opiskelijanumeroa');return x;}
 function gameValid(g){if(!g||typeof g!=='object'||typeof g.id!=='string'||typeof g.pub!=='string'||!Array.isArray(g.sched)||g.sched.length!==7||g.sched.some((v,i)=>v.v!==['lahto','discover','define','kapeikko','telakka','regatta','ranta'][i]||!Number.isFinite(v.m)||v.m<0.1||v.m>120)||!(g.start===null||Number.isFinite(g.start))||!Number.isInteger(g.seq)||g.seq<0||!Array.isArray(g.ev))fail(400,'Virheellinen pelitila');return structuredClone(g);}
 function publicGame(r){const g=r.game,k=g.kriisi;return {t:'g',id:g.id,nimi:g.nimi,pub:g.pub,sched:g.sched,start:g.start,seq:g.seq,ev:g.ev||[],kr:k?{id:k.id,l:k.laji,k:k.kohde||'',ki:k.kohdeKi||'',kn:k.kohdeN||'',o:k.otsikko,u:k.kuvaus,a:k.alku,e:k.e,v:k.v}:null};}
 function lasti(m,r){const p=m.snapshot?.p||{},f=k=>p[k]||'';return {t:'l',g:r.game.id,p:m.id,n:m.name,li:m.snapshot?.lippu||'#3F7FCF',ki:m.snapshot?.kirj||m.name.slice(0,2).toUpperCase(),ph:m.snapshot?.nakyma||'lahto',h:f('haaste'),ken:f('kenelle'),ol:(p.oletukset||[]).map(o=>[o.t,o.koe||'']),lo:(p.loydot||[]).map(l=>[l.t,l.tapa,l.src==='oma'?1:0]),ov:f('oivallus'),kr:(p.kriteerit||[]).map(k=>k.t),hmw:f('hmw'),mit:f('mittari'),raj:f('rajaus'),ve:(p.veneet||[]).map(b=>b.nimi),mu:p.muona??12,le:(p.leimat||[]).length,ka:!!m.approved,al:(p.liitto||[]).map(a=>a.id)};}
 function createApp({database=path.join(__dirname,'data','purjehdus.sqlite'),store:providedStore}={}){
  const store=providedStore||createStore({database}),db=store.db,live=new Map(),locks=new Map();
- const get=async code=>{const room=await store.get(code);if(!room)fail(404,'Peliä ei löydy');return room;};
+ const get=async code=>{const room=await store.get(code);if(!room)fail(404,'Peliä ei löydy');if(room.expiresAt&&room.expiresAt<=Date.now()){await store.remove?.(code);fail(410,'Pelin säilytysaika päättyi');}return room;};
  const put=r=>store.put(r);
+ const purge=()=>store.purgeExpired?.().catch(()=>{});purge();const cleanup=setInterval(purge,3600000);cleanup.unref();
  async function lock(key){const previous=locks.get(key)||Promise.resolve();let release;const next=new Promise(resolve=>release=resolve);locks.set(key,next);await previous;return()=>{release();if(locks.get(key)===next)locks.delete(key);};}
  const limits=new Map();function limit(ip){const now=Date.now(),v=limits.get(ip)||{at:now,n:0};if(now-v.at>60000){v.at=now;v.n=0;}if(++v.n>40)fail(429,'Liian monta yritystä. Odota minuutti.');limits.set(ip,v);if(limits.size>10000)limits.clear();}
  function member(r,req){const token=(req.headers.authorization||'').replace(/^Bearer /,'');const m=r.members.find(m=>m.tokenHash===hash(token));if(!token||!m)fail(401,'Istunto ei kelpaa. Liity peliin uudelleen.');return m;}
@@ -26,8 +29,9 @@ function createApp({database=path.join(__dirname,'data','purjehdus.sqlite'),stor
   if(url.pathname==='/health')return json({ok:true});
   if(parts[0]!=='api'){
    if(req.method!=='GET'&&req.method!=='HEAD')fail(405,'Vain GET');
-   const files={'/':'index.html','/index.html':'index.html','/game.html':'game.html','/net.js':'net.js','/lobby.js':'lobby.js'};
+   const files={'/':'index.html','/index.html':'index.html','/game.html':'game.html','/net.js':'net.js','/lobby.js':'lobby.js','/transfer.js':'transfer.js','/moodle.html':'moodle.html','/moodle-offline.html':'moodle.html','/moodle-privacy.js':'moodle-privacy.js','/privacy.html':'privacy.html'};
    const file=files[url.pathname];if(!file)fail(404,'Sivua ei löydy');
+   if(url.pathname==='/moodle-offline.html')res.setHeader('Content-Disposition','attachment; filename="Kaksoistimantti_yksityinen.html"');
    res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; media-src 'none'; frame-ancestors 'self'; base-uri 'self'");
    res.setHeader('Permissions-Policy','camera=(), microphone=()');
    res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':'text/html; charset=utf-8');return fs.createReadStream(path.join(__dirname,'public',file)).pipe(res);
@@ -36,9 +40,9 @@ function createApp({database=path.join(__dirname,'data','purjehdus.sqlite'),stor
   const payload=['POST','PUT','PATCH'].includes(req.method)?await body(req):null;
   if(parts[2])unlock=await lock(parts[2].toUpperCase());
   if(parts.length===2&&req.method==='POST'){
-   limit(req.socket.remoteAddress);const b=payload,game=gameValid(b.game);text(b.privateKey,1000);text(b.name,80);
+   limit(req.socket.remoteAddress);const b=payload,game=gameValid(b.game);text(b.privateKey,1000);alias(b.name);
    const code=randomBytes(5).toString('hex').toUpperCase(),token=secret(),id=secret();
-   const r={code,game,gameRevision:0,privateKey:b.privateKey,teacherCode:secret().slice(0,12),created:Date.now(),members:[{id,name:b.name,role:'johtaja',tokenHash:hash(token),inbox:[],seen:Date.now()}],audit:[]};await put(r);return json({token,...view(r,r.members[0])},201);
+   const r={code,game,gameRevision:0,privateKey:b.privateKey,teacherCode:secret().slice(0,12),created:Date.now(),expiresAt:Date.now()+7*86400000,members:[{id,name:b.name,role:'johtaja',tokenHash:hash(token),inbox:[],seen:Date.now()}],audit:[]};await put(r);return json({token,...view(r,r.members[0])},201);
   }
   const code=String(parts[2]||'').toUpperCase();
   if(parts[3]==='join'&&req.method==='POST'){
@@ -46,11 +50,13 @@ function createApp({database=path.join(__dirname,'data','purjehdus.sqlite'),stor
    if(!role)fail(400,'Tuntematon rooli');if(role!=='pelaaja'&&hash(b.teacherCode||'')!==hash(r.teacherCode))fail(403,'Väärä opettajatunnus');
    if(r.members.filter(m=>m.role==='pelaaja').length>=(role==='pelaaja'?15:Infinity))fail(409,'Peli on täynnä (15 venettä)');
    if(role!=='pelaaja'&&r.members.filter(m=>['satama','luotsi'].includes(m.role)).length>=4)fail(409,'Neljä opettajapaikkaa on käytössä');
-   const token=secret(),m={id:secret(),name:text(b.name,80),role,tokenHash:hash(token),inbox:[],seen:Date.now(),approved:false};r.members.push(m);await put(r);return json({token,...view(r,m)},201);
+   alias(b.name);if(r.members.some(x=>x.name===b.name&&x.role===role))fail(409,'Työtunnus on jo tässä pelissä. Jatka vanhaa istuntoa tai luo uusi tunnus.');
+   const token=secret(),m={id:secret(),name:b.name,role,tokenHash:hash(token),inbox:[],seen:Date.now(),approved:false};r.members.push(m);await put(r);return json({token,...view(r,m)},201);
   }
   // Body is fully received BEFORE loading a room for mutation, avoiding interleaved stale writes.
   const b=payload;
   const r=await get(code),m=member(r,req);m.seen=Date.now();live.set(m.id,m.seen);
+  if(parts[3]==='delete'&&req.method==='DELETE'){if(m.role!=='johtaja')fail(403,'Vain pelinjohtaja');await store.remove(code);return json({ok:true});}
   if(parts[3]==='session'&&req.method==='GET')return json(view(r,m));
   if(parts[3]==='snapshot'&&req.method==='PUT'){
    if(m.role!=='pelaaja')fail(403,'Vain pelaaja');if(!b.p||typeof b.p!=='object'||Array.isArray(b.p))fail(400,'Pelaajatila puuttuu');
@@ -66,7 +72,7 @@ function createApp({database=path.join(__dirname,'data','purjehdus.sqlite'),stor
   }
   if(parts[3]==='stamp'&&req.method==='POST'){
    if(m.role==='pelaaja')fail(403,'Vain ohjaaja');const stamp=b.stamp,target=r.members.find(x=>x.id===stamp?.p&&x.role==='pelaaja');
-   if(!target||stamp.g!==r.game.id||!['luotsi','satama'].includes(stamp.k)||!Number.isInteger(stamp.v)||stamp.v<0||stamp.v>4||typeof stamp.nonce!=='string')fail(400,'Virheellinen leima');
+   if(!target||stamp.g!==r.game.id||stamp.by!==m.name||!['luotsi','satama'].includes(stamp.k)||!Number.isInteger(stamp.v)||stamp.v<0||stamp.v>4||typeof stamp.nonce!=='string')fail(400,'Virheellinen leima');
    const key=await webcrypto.subtle.importKey('raw',Buffer.from(r.game.pub,'base64url'),{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
    if(!await webcrypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,Buffer.from(stamp.sig||'','base64url'),Buffer.from([stamp.g,stamp.p,stamp.k,stamp.v,stamp.txt,stamp.nonce,stamp.by].join('|'))))fail(400,'Leiman allekirjoitus ei kelpaa');
    // Re-read after asynchronous crypto verification, so concurrent stamps cannot overwrite each other.
@@ -86,7 +92,7 @@ function createApp({database=path.join(__dirname,'data','purjehdus.sqlite'),stor
   if(parts[3]==='backup'&&req.method==='GET'){if(m.role!=='johtaja')fail(403,'Vain pelinjohtaja');return json({type:'purjehdus-online-backup',saved:new Date().toISOString(),room:{...r,members:r.members.map(({tokenHash,...x})=>x)}});}
   fail(404,'Reittiä ei löydy');
  }catch(e){if(!res.headersSent){res.writeHead(e.status||500,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:e.status?e.message:'Palvelinvirhe'}));}else res.end();}finally{unlock?.();}});
- return {server,db,close:()=>new Promise(resolve=>server.close(()=>{store.close();resolve();}))};
+ return {server,db,close:()=>new Promise(resolve=>server.close(()=>{clearInterval(cleanup);store.close();resolve();}))};
 }
-if(require.main===module){const app=createApp({database:process.env.DATA_FILE||undefined});app.server.listen(Number(process.env.PORT)||8080,process.env.HOST||'0.0.0.0',()=>console.log('Purjehdus-palvelin käynnissä portissa '+(process.env.PORT||8080)));}
+if(require.main===module){const app=createApp({database:process.env.DATA_FILE||undefined});app.server.listen(Number(process.env.PORT||process.argv[2])||8080,process.env.HOST||'0.0.0.0',()=>console.log('Purjehdus-palvelin käynnissä portissa '+(process.env.PORT||process.argv[2]||8080)));}
 module.exports={createApp};

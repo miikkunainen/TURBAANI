@@ -12,7 +12,7 @@ Tämä on valittu julkaisutapa. **Maksullista Render-palvelua tai levyä ei otet
 1. Avaa [Supabase Dashboard](https://supabase.com/dashboard) ja kirjaudu tai luo tili itse.
 2. Luo uusi projekti **Free-organisaatioon**. Valitse EU-alue, esimerkiksi Frankfurt, jos se on tarjolla. Aseta projektin tietokantasalasana itse ja säilytä se omassa salasananhallinnassasi.
 3. Kun projekti on valmis, avaa **SQL Editor**. Kopioi tämän repositorion `supabase-schema.sql` editoriin ja suorita se.
-4. SQL luo yhden `purjehdus_rooms`-taulun ja rajaa sen pääsyn palvelimelle. Älä lisää julkista read/write-politiikkaa.
+4. Käytä uusinta supabase-schema.sql-tiedostoa myös, jos ajoit aiemman version: uusi versio lisää säilytysajan ja poisto-oikeuden. SQL luo yhden `purjehdus_rooms`-taulun ja rajaa sen pääsyn palvelimelle. Älä lisää julkista read/write-politiikkaa.
 5. Kopioi projektin **Project URL** ja palvelinkäyttöön tarkoitettu **secret API key** (`sb_secret_…`) Supabasen Connect-/API Keys -näkymästä. Ne siirretään seuraavassa vaiheessa suoraan Renderin ympäristömuuttujiin. **Älä lähetä avainta chattiin tai commitoi sitä GitHubiin.** Publishable-avain ei riitä tämän taulun käyttöön.
 
 ## 2. Luo Render Free -palvelu
@@ -55,4 +55,4 @@ Lähteet: [Render Free](https://render.com/docs/free), [Supabase Free](https://s
 
 ## Tarkistusten tila
 
-29 ohjelmallista tarkistusta läpäisty. Mukana ovat asynkroninen tallennus, yhtäaikaiset liittymiset, välimuisti, tietokantavirheen käsittely ja sen esto, ettei ilmaisjulkaisu vahingossa käytä katoavaa levyä. Supabase-REST-kerros on testattu jäljitellyillä REST-vastauksilla; yhteyttä sinun oikeaan Supabase-projektiisi ei ole vielä testattu, koska projektia ja sen asetuksia ei ole annettu. Julkinen Render-julkaisu vahvistetaan vasta tilan luomisen ja Live-osoitteen tarkistuksen jälkeen.
+43 ohjelmallista tarkistusta läpäisty. Mukana ovat asynkroninen tallennus, yhtäaikaiset liittymiset, välimuisti, tietokantavirheen käsittely ja sen esto, ettei ilmaisjulkaisu vahingossa käytä katoavaa levyä. Supabase-REST-kerros on testattu jäljitellyillä REST-vastauksilla; yhteyttä sinun oikeaan Supabase-projektiisi ei ole vielä testattu, koska projektia ja sen asetuksia ei ole annettu. Julkinen Render-julkaisu vahvistetaan vasta tilan luomisen ja Live-osoitteen tarkistuksen jälkeen.
